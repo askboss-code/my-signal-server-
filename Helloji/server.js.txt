@@ -1,0 +1,37 @@
+const express = require("express");
+const http = require("http");
+const socketIO = require("socket.io");
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIO(server, {
+  cors: { origin: "*" },
+});
+
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+
+  socket.on("join", () => {
+    const clients = Array.from(io.sockets.sockets.keys());
+    const other = clients.find(id => id !== socket.id);
+    if (other) {
+      socket.emit("peer", other);
+      io.to(other).emit("peer", socket.id);
+    }
+  });
+
+  socket.on("signal", (data) => {
+    io.to(data.to).emit("signal", {
+      from: socket.id,
+      signal: data.signal,
+    });
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Disconnected:", socket.id);
+  });
+});
+
+server.listen(10000, () => {
+  console.log("Server running on port 10000");
+});
